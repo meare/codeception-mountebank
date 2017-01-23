@@ -100,16 +100,16 @@ class MountebankTest extends \PHPUnit_Framework_TestCase
             ->willReturnOnConsecutiveCalls(4545, 4646);
         $this->juggler->expects($this->once())
             ->method('retrieveAndSaveContract')
-            ->with(4545, '_output/mountebank/output_contract.json');
+            ->with(4545, '_output/mountebank/output_contract_1.json');
 
         $module = $this->createMountebankModule(array_merge($this->minimalValidConfiguration, [
             'imposters' => [
                 'service_1' => [
-                    'contract' => 'service_contract.json',
-                    'save'     => '_output/mountebank/output_contract.json',
+                    'contract' => 'service_1_contract.json',
+                    'save'     => '_output/mountebank/output_contract_1.json',
                 ],
                 'service_2' => [
-                    'contract' => 'service_contract.json',
+                    'contract' => 'service_2_contract.json',
                 ],
             ],
         ]));

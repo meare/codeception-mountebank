@@ -295,7 +295,7 @@ class Mountebank extends Module
     }
 
     /**
-     * Replaces imposter, which will be restored before next test
+     * Replaces imposter until next test
      *
      * @param string          $alias
      * @param string|Imposter $imposter_or_path Path to imposter contract or Imposter instance
@@ -308,7 +308,7 @@ class Mountebank extends Module
 
     /**
      * Replaces imposter without queueing it for restore;
-     * Expects new imposter to have the same port replaced imposter had
+     * Expects new imposter to have the same port as replaced imposter had
      *
      * @param string          $alias
      * @param string|Imposter $imposter_or_path
@@ -317,10 +317,12 @@ class Mountebank extends Module
     {
         $port = $this->resolveImposterPort($alias);
 
-        if (is_string($imposter_or_path)) { // Path to imposter contract given
+        if (is_string($imposter_or_path)) {
+            // Assume path to imposter contract given
             $this->juggler->deleteImposterIfExists($port);
             $new_port = $this->juggler->postImposterFromFile($imposter_or_path);
-        } else { // Assume Imposter instance given
+        } else {
+            // Assume Imposter instance given
             $new_port = $this->juggler->replaceImposter($imposter_or_path);
         }
 
