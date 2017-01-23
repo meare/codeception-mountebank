@@ -21,7 +21,7 @@
   "require": {
     "php": ">=5.5",
     "codeception/codeception": "~2.0",
-    "meare/juggler": "dev-master"
+    "meare/juggler": "~1.0"
   },
   "require-dev": {
     "phpunit/phpunit": "^4.0",

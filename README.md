@@ -9,7 +9,7 @@
 
 codeception-mountebank provides [mountebank](http://www.mbtest.org/) integration with [Codeception](http://codeception.com/). Module allows to:
 
-* Configure imposters required for run;
+* Configure imposters required for tests run;
 * Use imposters as mocks and verify specific requests were made;
 * Save imposters after run for debugging purposes;
 
@@ -124,7 +124,7 @@ More complex criteria could be expressed as callback. Callback signature is:
 /**
  * @var string $request decoded request object from contract JSON.
  *
- * @return bool Whether requests metches
+ * @return bool Whether requests matches
  */
 function(array $request) {}
 ```
