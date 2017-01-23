@@ -10,6 +10,7 @@ use Codeception\Module;
 use Codeception\TestCase;
 use Codeception\TestInterface;
 use Exception;
+use Meare\Juggler\Imposter\Imposter;
 use Meare\Juggler\Juggler;
 
 class Mountebank extends Module
@@ -25,7 +26,7 @@ class Mountebank extends Module
      * @var array
      */
     protected $config = [
-        'port' => Juggler::DEFAULT_PORT,
+        'port'      => Juggler::DEFAULT_PORT,
         'imposters' => [],
     ];
 
@@ -39,7 +40,7 @@ class Mountebank extends Module
     /**
      * Per-test imposters cache
      *
-     * @var \Meare\Juggler\Imposter\Imposter[]
+     * @var Imposter[]
      */
     private $cachedImposters;
 
@@ -150,9 +151,10 @@ class Mountebank extends Module
     public function restoreImposter($alias)
     {
         $this->debug("Restoring imposter '$alias'");
-        $port = $this->resolveImposterPort($alias);
-        $this->juggler->deleteImposter($port);
-        $this->juggler->postImposterFromFile($this->config['imposters'][$alias]['contract']);
+        $this->silentlyReplaceImposter(
+            $alias,
+            $this->config['imposters'][$alias]['contract']
+        );
     }
 
     /**
@@ -191,11 +193,11 @@ class Mountebank extends Module
     }
 
     /**
-     * Retrieves imposter from mountebank or returns cached Imposter instance
-     * Imposter instance gets cached for current test after retrieval
+     * Fetches imposter from mountebank or returns cached Imposter instance.
+     * Imposter instance gets cached for current test after fetching
      *
      * @param string $alias
-     * @return \Meare\Juggler\Imposter\Imposter
+     * @return Imposter
      * @see Mountebank::fetchImposter() To get Imposter without hitting cache
      */
     public function getImposter($alias)
@@ -209,10 +211,10 @@ class Mountebank extends Module
 
     /**
      * Retrieves imposter from mountebank
-     * Does not looks in cache but caches retrieved Imposter instance
+     * Does not looks in cache but caches fetched Imposter instance
      *
      * @param string $alias
-     * @return \Meare\Juggler\Imposter\Imposter
+     * @return Imposter
      */
     public function fetchImposter($alias)
     {
@@ -233,6 +235,7 @@ class Mountebank extends Module
         $port = $this->resolveImposterPort($alias);
         $imposter = $this->juggler->getImposter($port);
         $requests = $imposter->findRequests($criteria);
+
         if (sizeof($requests) > 0) {
             $this->debugSection('Matched requests', json_encode($requests, JSON_PRETTY_PRINT));
         }
@@ -276,11 +279,11 @@ class Mountebank extends Module
 
     /**
      * Replaces imposter with cached Imposter instance for current test
-     * Imposter instance is cached when retrieved with Mountebank::getImposter() method
-     * Mountebank::replaceImposterWithCached() is intended to be used after retrieved Imposter instance was modified
+     * Imposter instance gets cached when retrieved with Mountebank::getImposter() or Mountebank::fetchImposter() methods
      *
      * @param string $alias
-     * @see Mountebank::getImposter() To retrieve and cache Imposter instance
+     * @see Mountebank::getImposter()
+     * @see Mountebank::fetchImposter()
      */
     public function replaceImposterWithCached($alias)
     {
@@ -292,24 +295,34 @@ class Mountebank extends Module
     }
 
     /**
-     * Replaces imposter for current test
-     * Expects new imposter to have the same port replaced imposter had
-     * Replaced imposter will be restored before next test
+     * Replaces imposter, which will be restored before next test
      *
-     * @param string                                  $alias
-     * @param string|\Meare\Juggler\Imposter\Imposter $imposter_or_path Path to imposter contract or Imposter instance
+     * @param string          $alias
+     * @param string|Imposter $imposter_or_path Path to imposter contract or Imposter instance
      */
     public function replaceImposter($alias, $imposter_or_path)
     {
-        $port = $this->resolveImposterPort($alias);
-        if (is_string($imposter_or_path)) { // Path to imposter contract given
-            $imposter = $this->juggler->createImposterFromFile($imposter_or_path);
-        } else { // Assume Imposter instance given
-            $imposter = $imposter_or_path;
-        }
-
         $this->replacedImposters[$alias] = true;
-        $new_port = $this->juggler->replaceImposter($imposter);
+        $this->silentlyReplaceImposter($alias, $imposter_or_path);
+    }
+
+    /**
+     * Replaces imposter without queueing it for restore;
+     * Expects new imposter to have the same port replaced imposter had
+     *
+     * @param string          $alias
+     * @param string|Imposter $imposter_or_path
+     */
+    private function silentlyReplaceImposter($alias, $imposter_or_path)
+    {
+        $port = $this->resolveImposterPort($alias);
+
+        if (is_string($imposter_or_path)) { // Path to imposter contract given
+            $this->juggler->deleteImposterIfExists($port);
+            $new_port = $this->juggler->postImposterFromFile($imposter_or_path);
+        } else { // Assume Imposter instance given
+            $new_port = $this->juggler->replaceImposter($imposter_or_path);
+        }
 
         if ($new_port !== $port) {
             $this->fail("Failed to replace imposter '$alias' at port $port - new imposter port does not match ($new_port)");
