@@ -187,7 +187,11 @@ class Mountebank extends Module
     {
         foreach ($this->config['imposters'] as $alias => $imposter_config) {
             if (isset($imposter_config['save'])) {
-                $this->juggler->retrieveAndSaveContract($this->resolveImposterPort($alias), $imposter_config['save']);
+                try {
+                    $this->juggler->retrieveAndSaveContract($this->resolveImposterPort($alias), $imposter_config['save']);
+                } catch (Exception $e) {
+                    $this->debug(sprintf('Failed to save imposters: %s %s', get_class($e), $e->getMessage()));
+                }
             }
         }
     }
