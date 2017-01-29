@@ -5,9 +5,7 @@ namespace Codeception\Module;
 use Codeception\Configuration;
 use Codeception\Exception\ConfigurationException;
 use Codeception\Exception\ModuleConfigException;
-use Codeception\Extension;
 use Codeception\Module;
-use Codeception\TestCase;
 use Codeception\TestInterface;
 use Exception;
 use Meare\Juggler\Imposter\Imposter;
@@ -45,7 +43,7 @@ class Mountebank extends Module
     private $cachedImposters;
 
     /**
-     * Maps imposter alias (key) to imposter port (value)
+     * Map; imposter alias (key) to imposter port (value)
      *
      * @var array
      */
@@ -68,21 +66,6 @@ class Mountebank extends Module
         $this->juggler = $this->createJuggler();
 
         $this->initializeImposters();
-    }
-
-    protected function validateConfig()
-    {
-        parent::validateConfig();
-        $this->validateImpostersConfig();
-    }
-
-    protected function validateImpostersConfig()
-    {
-        foreach ($this->config['imposters'] as $alias => $imposter_config) {
-            if (!isset($imposter_config['contract'])) {
-                throw new ModuleConfigException($this, "Missing 'contract' field in imposter configuration ('$alias')");
-            }
-        }
     }
 
     /**
@@ -135,6 +118,7 @@ class Mountebank extends Module
      * Imposter should be restored if it was replaced during test or it was specified as 'mock' in module configuration
      *
      * @param string $alias
+     *
      * @return bool
      */
     private function imposterShouldBeRestored($alias)
@@ -158,7 +142,33 @@ class Mountebank extends Module
     }
 
     /**
+     * Replaces imposter without queueing it for restoration;
+     * Expects new imposter to have the same port as replaced imposter had
+     *
+     * @param string          $alias
+     * @param string|Imposter $imposter_or_path
+     */
+    private function silentlyReplaceImposter($alias, $imposter_or_path)
+    {
+        $port = $this->resolveImposterPort($alias);
+
+        if (is_string($imposter_or_path)) {
+            // Assume path to imposter contract given
+            $this->juggler->deleteImposterIfExists($port);
+            $new_port = $this->juggler->postImposterFromFile($imposter_or_path);
+        } else {
+            // Assume Imposter instance given
+            $new_port = $this->juggler->replaceImposter($imposter_or_path);
+        }
+
+        if ($new_port !== $port) {
+            $this->fail("Failed to replace imposter '$alias' at port $port - new imposter port does not match ($new_port)");
+        }
+    }
+
+    /**
      * @param string $alias
+     *
      * @return int Port
      */
     private function resolveImposterPort($alias)
@@ -201,6 +211,7 @@ class Mountebank extends Module
      * Imposter instance gets cached for current test after fetching
      *
      * @param string $alias
+     *
      * @return Imposter
      * @see Mountebank::fetchImposter() To get Imposter without hitting cache
      */
@@ -218,6 +229,7 @@ class Mountebank extends Module
      * Does not looks in cache but caches fetched Imposter instance
      *
      * @param string $alias
+     *
      * @return Imposter
      */
     public function fetchImposter($alias)
@@ -233,6 +245,8 @@ class Mountebank extends Module
      * @param string $alias
      * @param array  $criteria
      * @param int    $exact_quantity
+     *
+     * @see Imposter::findRequests()
      */
     public function seeImposterHasRequestsByCriteria($alias, array $criteria, $exact_quantity = 1)
     {
@@ -283,9 +297,11 @@ class Mountebank extends Module
 
     /**
      * Replaces imposter with cached Imposter instance for current test
-     * Imposter instance gets cached when retrieved with Mountebank::getImposter() or Mountebank::fetchImposter() methods
+     * Imposter instance gets cached when retrieved with Mountebank::getImposter() or Mountebank::fetchImposter()
+     * methods
      *
      * @param string $alias
+     *
      * @see Mountebank::getImposter()
      * @see Mountebank::fetchImposter()
      */
@@ -310,33 +326,24 @@ class Mountebank extends Module
         $this->silentlyReplaceImposter($alias, $imposter_or_path);
     }
 
-    /**
-     * Replaces imposter without queueing it for restore;
-     * Expects new imposter to have the same port as replaced imposter had
-     *
-     * @param string          $alias
-     * @param string|Imposter $imposter_or_path
-     */
-    private function silentlyReplaceImposter($alias, $imposter_or_path)
+    protected function validateConfig()
     {
-        $port = $this->resolveImposterPort($alias);
+        parent::validateConfig();
+        $this->validateImpostersConfig();
+    }
 
-        if (is_string($imposter_or_path)) {
-            // Assume path to imposter contract given
-            $this->juggler->deleteImposterIfExists($port);
-            $new_port = $this->juggler->postImposterFromFile($imposter_or_path);
-        } else {
-            // Assume Imposter instance given
-            $new_port = $this->juggler->replaceImposter($imposter_or_path);
-        }
-
-        if ($new_port !== $port) {
-            $this->fail("Failed to replace imposter '$alias' at port $port - new imposter port does not match ($new_port)");
+    protected function validateImpostersConfig()
+    {
+        foreach ($this->config['imposters'] as $alias => $imposter_config) {
+            if (!isset($imposter_config['contract'])) {
+                throw new ModuleConfigException($this, "Missing 'contract' field in imposter configuration ('$alias')");
+            }
         }
     }
 
     /**
      * @param string $relative_path Path relative to project directory
+     *
      * @return string
      */
     protected function getFullPath($relative_path)
