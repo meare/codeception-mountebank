@@ -250,9 +250,8 @@ class Mountebank extends Module
      */
     public function seeImposterHasRequestsByCriteria($alias, array $criteria, $exact_quantity = 1)
     {
-        $port = $this->resolveImposterPort($alias);
-        $imposter = $this->juggler->getImposter($port);
-        $requests = $imposter->findRequests($criteria);
+        $requests = $this->fetchImposter($alias)
+            ->findRequests($criteria);
 
         if (sizeof($requests) > 0) {
             $this->debugSection('Matched requests', json_encode($requests, JSON_PRETTY_PRINT));
@@ -276,10 +275,10 @@ class Mountebank extends Module
      */
     public function seeImposterHasRequests($alias)
     {
-        $port = $this->resolveImposterPort($alias);
-        $imposter = $this->juggler->getImposter($port);
-
-        $this->assertTrue($imposter->hasRequests(), 'Imposter has requests recorded');
+        $this->assertTrue(
+            $this->fetchImposter($alias)->hasRequests(),
+            'Imposter has requests recorded'
+        );
     }
 
     /**
@@ -289,10 +288,10 @@ class Mountebank extends Module
      */
     public function seeImposterHasNoRequests($alias)
     {
-        $port = $this->resolveImposterPort($alias);
-        $imposter = $this->juggler->getImposter($port);
-
-        $this->assertFalse($imposter->hasRequests(), 'Imposter has no request recorded');
+        $this->assertFalse(
+            $this->fetchImposter($alias)->hasRequests(),
+            'Imposter has no request recorded'
+        );
     }
 
     /**
